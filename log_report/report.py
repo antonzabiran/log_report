@@ -1,19 +1,24 @@
 from collections import defaultdict
 
 def generate_average_report(logs):
-    endpoint_data = defaultdict(lambda: {"count": 0, "total_time": 0})
+    durations = defaultdict(list)
+    for log in logs:
+        endpoint = log.get("url")
+        duration = log.get("duration")
+        if endpoint and isinstance(duration, (int, float)):
+            durations[endpoint].append(duration)
 
-    for entry in logs:
-        endpoint = entry.get("endpoint")
-        response_time = entry.get("response_time")
+    table = []
+    for endpoint, values in durations.items():
+        avg = sum(values) / len(values)
+        table.append({"url": endpoint, "average_duration": round(avg, 2)})
+    return table
 
-        if endpoint and isinstance(response_time, (int, float)):
-            endpoint_data[endpoint]["count"] += 1
-            endpoint_data[endpoint]["total_time"] += response_time
+REPORT_GENERATORS = {
+    "average": generate_average_report,
+}
 
-    report = []
-    for endpoint, data in endpoint_data.items():
-        avg_time = round(data["total_time"] / data["count"], 2)
-        report.append([endpoint, data["count"], avg_time])
-
-    return report
+def generate_report(report_type, logs):
+    if report_type not in REPORT_GENERATORS:
+        raise ValueError(f"Неподдерживаемый тип отчета: {report_type}")
+    return REPORT_GENERATORS[report_type](logs)

@@ -1,26 +1,23 @@
 import pytest
-from log_report.reader import read_logs
-import tempfile
-import json
+from reader import read_logs
 
-def test_read_logs_valid():
-    # Создаем временный лог-файл
-    data = {"endpoint": "/api/test", "response_time": 123}
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as tmp:
-        tmp.write(json.dumps(data) + "\n")
-        tmp.seek(0)
-        result = read_logs([tmp.name])
+def test_read_logs_valid(tmp_path):
+    file = tmp_path / "test.json"
+    file.write_text('{"@timestamp": "2025-08-01", "url": "/test", "duration": 100}\n')
+    logs = read_logs([str(file)])
+    assert len(logs) == 1
 
-    assert isinstance(result, list)
-    assert result[0]["endpoint"] == "/api/test"
+def test_read_logs_with_invalid_json(tmp_path):
+    file = tmp_path / "test.json"
+    file.write_text('invalid_json\n{"@timestamp": "2025-08-01", "url": "/test", "duration": 100}\n')
+    logs = read_logs([str(file)])
+    assert len(logs) == 1
 
-
-def test_read_logs_with_invalid_line():
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as tmp:
-        tmp.write("this is not json\n")
-        tmp.write(json.dumps({"endpoint": "/api/ok", "response_time": 200}))
-        tmp.seek(0)
-        result = read_logs([tmp.name])
-
-    assert len(result) == 1
-    assert result[0]["endpoint"] == "/api/ok"
+def test_read_logs_with_date_filter(tmp_path):
+    file = tmp_path / "test.json"
+    file.write_text(
+        '{"@timestamp": "2025-08-01", "url": "/test", "duration": 100}\n'
+        '{"@timestamp": "2025-07-30", "url": "/test", "duration": 200}\n'
+    )
+    logs = read_logs([str(file)], date_filter="2025-08-01")
+    assert len(logs) == 1

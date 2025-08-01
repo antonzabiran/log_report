@@ -1,31 +1,32 @@
 import argparse
-from log_report.reader import read_logs
-from log_report.report import generate_average_report
-from log_report.utils import validate_file_paths, print_table
-
+import sys
+from utils import validate_file_paths
+from reader import read_logs
+from report import generate_report
+from tabulate import tabulate
 
 def main():
-    parser = argparse.ArgumentParser(description="Log report generator")
-    parser.add_argument("--file", nargs="+", required=True, help="Path to log file(s)")
-    parser.add_argument("--report", required=True, help="Report type (only 'average' supported)")
-
+    parser = argparse.ArgumentParser(description="Генерация отчета по логам")
+    parser.add_argument("--file", nargs='+', required=True, help="Пути к лог-файлам")
+    parser.add_argument("--report", required=True, help="Тип отчета (например: average)")
+    parser.add_argument("--date", required=False, help="Фильтр по дате (YYYY-MM-DD)")
     args = parser.parse_args()
 
-    # Валидация входных путей к файлам
-    if not validate_file_paths(args.file):
-        print("One or more log files do not exist.")
-        return
+    try:
+        validate_file_paths(args.file)
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        sys.exit(1)
 
-    # Чтение логов
-    logs = read_logs(args.file)
+    logs = read_logs(args.file, args.date)
 
-    # Обработка отчета по типу
-    if args.report == "average":
-        report_data = generate_average_report(logs)
-        print_table(report_data)
-    else:
-        print("Unsupported report type")
+    try:
+        table = generate_report(args.report, logs)
+    except ValueError as e:
+        print(e)
+        sys.exit(1)
 
+    print(tabulate(table, headers="keys"))
 
 if __name__ == "__main__":
     main()
